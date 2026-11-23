@@ -63,15 +63,24 @@ The shipped `dsh.bundle.patch.yml` is the ready overlay for DSH 0.2.3. `ctxpress
 | Knob | Env | File key | Default |
 |---|---|---|---|
 | Auto-stand-aside | `CTXPRESS_AUTO_STAND_ASIDE` | `autoStandAside` | `true` |
-| Extra retry codes | `CTXPRESS_RETRY_CODES` | `extraRetryCodes` | `MALFORMED_RESPONSE` |
 | State dir (ledger) | `CTXPRESS_STATE_DIR` | `stateDir` | unset (no persistence) |
 | Recall cap | `CTXPRESS_RECALL_LIMIT` | `recallLimit` | `4000` |
+
+(The per-provider `retryPolicy.retryableCodes` addition is not a knob: DSH 0.2.3
+keeps retry policy under each provider row, and the provider row id is build-specific.
+`dsh.bundle.patch.yml` documents the row to add by hand — see its retry-code note.)
 
 ## Verify
 
 - **Unit tests** (no model, no network) — `npm test` (or `node --import tsx --test tests/*.test.ts`):
-  28 assertions over config precedence, the ledger, tool argument validation + graceful
-  no-agent paths, command parsing, and the gate's overlay-row builder.
+  covers config precedence, the ledger, tool argument validation + graceful no-agent
+  paths, command parsing, the gate's overlay-row builder (including a real no-drift check
+  against the shipped `dsh.bundle.patch.yml`), and the `session/event` ledger-feed
+  regression (the summary must arrive via the session feed, not a dead context-bus name).
+- **Type gate** — `npm run typecheck` runs `tsc` over `src/` against the real DSH seam
+  typings; this is the check that would have caught the `compaction/summary` miswiring,
+  since the build itself is esbuild (no type-check). `npm run build:types` emits the
+  declaration files the published `types` field points at.
 - **Real DSH load** — `npm run verify` boots a keyless DSH AgentLoop the way DSH's own
   tests do, mounts `ctxpress` + `ctxpress-gate`, and asserts all three tools and the
   `/ctx` command register in the **real** service registries, then executes
@@ -98,6 +107,9 @@ The repo ships a prebuilt `dist/`. To rebuild, `esbuild` is required:
 npm run build
 ```
 
-Local verification resolves the `@deepseek-ai/*` packages from the DSH checkout by
-symlinking them into `node_modules/@deepseek-ai/` (see `docs` in the repo / the link farm
-this workspace uses). Published, the package depends on them normally from the registry.
+Local verification resolves the `@deepseek-ai/*` packages from a DSH checkout by
+symlinking them into `node_modules/@deepseek-ai/` (an environment-specific link farm; it
+is gitignored and not part of the published package). To build locally without the
+registry, the `typescript` / `esbuild` / `@types/node` dev tools are likewise linked from
+the host checkout's store into `node_modules/` (also gitignored). Published, the package
+depends on the pinned `@deepseek-ai/*` versions from the registry.

@@ -9,17 +9,15 @@ function envOf(input: Record<string, string | undefined>): Record<string, string
 test('defaults (no file, no env)', () => {
   const c = resolveConfig({}, {})
   assert.equal(c.autoStandAside, true)
-  assert.deepEqual([...c.extraRetryCodes], ['MALFORMED_RESPONSE'])
   assert.equal(c.recallLimit, 4000)
   assert.equal(c.stateDir, undefined)
 })
 
 test('file layer applies when env is absent', () => {
-  const file: CtxpressInput = { autoStandAside: false, recallLimit: 11, extraRetryCodes: ['X'] }
+  const file: CtxpressInput = { autoStandAside: false, recallLimit: 11 }
   const c = resolveConfig(file, {})
   assert.equal(c.autoStandAside, false)
   assert.equal(c.recallLimit, 11)
-  assert.deepEqual([...c.extraRetryCodes], ['X'])
 })
 
 test('env overrides file, per key', () => {
@@ -29,9 +27,10 @@ test('env overrides file, per key', () => {
   assert.equal(c.recallLimit, 7) // env wins over file
 })
 
-test('env retry-code list is parsed + trimmed + empty-dropped', () => {
-  const c = resolveConfig({}, envOf({ CTXPRESS_RETRY_CODES: ' A , ,B ' }))
-  assert.deepEqual([...c.extraRetryCodes], ['A', 'B'])
+test('non-positive recallLimit falls back to the default', () => {
+  assert.equal(resolveConfig({}, envOf({ CTXPRESS_RECALL_LIMIT: '0' })).recallLimit, 4000)
+  assert.equal(resolveConfig({}, envOf({ CTXPRESS_RECALL_LIMIT: '-3' })).recallLimit, 4000)
+  assert.equal(resolveConfig({ recallLimit: 0 }, {}).recallLimit, 4000)
 })
 
 test('env stateDir passes through', () => {

@@ -4,7 +4,7 @@
  * tools + the /ctx command registered in the REAL service registries, then execute one
  * tool through the real pipeline.
  *
- * Run: cd ctxpress Run: cd ctxpress && node --import tsx verify/load-verify.tsRun: cd ctxpress && node --import tsx verify/load-verify.ts node --import tsx verify/load-verify-dist.ts
+ * Run: cd ctxpress && node --import tsx verify/load-verify-dist.ts
  */
 import { Context } from '@deepseek-ai/cordis'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'

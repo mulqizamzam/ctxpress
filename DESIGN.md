@@ -59,8 +59,14 @@ new code, no dependency on the billion-context package, no wire interception.
 
 ## Verification
 
-- Unit tests: `node --import tsx --test tests/*.test.ts` (ledger, config, command, tool
-  argument validation) — no model, no network.
-- Keyless load: `vendor/cordis/bin.js --config cordis.verify.yml` composes the real DSH
-  service packages + `./dist/index.js` + `./dist/gate.js` and drives one `ctxpress:compact`
-  and one `/ctx` through the real pipeline, proving the plugin loads and its surface wires up.
+- Unit tests: `npm test` (ledger, config, command, tool argument validation, and the
+  `session/event` ledger-feed regression) — no model, no network.
+- Type gate: `npm run typecheck` (`tsc -p tsconfig.json --noEmit`) — the seam typings are
+  checked against the DSH checkout; this is what would have caught the `compaction/summary`
+  miswiring, since the build itself is esbuild (no type-check).
+- Keyless load: `npm run verify` (script `verify/load-verify.ts`) boots a keyless AgentLoop
+  the way DSH's own tests do, mounts `ctxpress` + `ctxpress-gate`, and asserts all three
+  tools and the `/ctx` command register in the real service registries, then executes
+  `ctxpress_context` through the real pipeline. `npm run verify:dist` does the same against
+  the built `dist/`. The standalone-loader composition (`cordis.yml` + `verify/driver.ts`)
+  is the bin.js variant of the same check.

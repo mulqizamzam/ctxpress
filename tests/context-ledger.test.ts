@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ContextLedger, summarizeBlocks } from '../src/context-ledger'
+import { ContextLedger } from '../src/context-ledger'
 
 test('empty ledger reports no compactions', () => {
   const l = new ContextLedger()
@@ -35,12 +35,6 @@ test('recordSummary caps the retained summaryText at the ledger limit', () => {
   assert.equal(l.recall().last?.summaryText, 'ABCD')
 })
 
-test('summarizeBlocks joins text blocks, skips non-text, respects the limit', () => {
-  const blocks = [{ type: 'text', text: 'hello' }, { type: 'image', data: 'x' }, { type: 'text', text: 'world' }]
-  assert.equal(summarizeBlocks(blocks, 100), 'hello\nworld')
-  assert.equal(summarizeBlocks(blocks, 2).startsWith('he'), true)
-})
-
 test('save persists a JSON snapshot into the state dir', () => {
   const dir = mkdtempSync(join(tmpdir(), 'ctxpress-'))
   const l = new ContextLedger(100)
@@ -48,4 +42,13 @@ test('save persists a JSON snapshot into the state dir', () => {
   assert.equal(l.save(dir), true)
   // No state dir configured → no write, reports false.
   assert.equal(l.save(undefined), false)
+})
+
+test('save creates the snapshot owner-only (0o600)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ctxpress-'))
+  const l = new ContextLedger(100)
+  l.recordSummary({ shadowedSeqs: [1], shadowedTokenCount: 5 })
+  assert.equal(l.save(dir), true)
+  const mode = statSync(join(dir, 'ctxpress-ledger.json')).mode & 0o777
+  assert.equal(mode, 0o600)
 })

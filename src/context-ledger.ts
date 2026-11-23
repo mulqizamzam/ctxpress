@@ -46,16 +46,6 @@ export interface LedgerRecall {
 
 const MAX_ENTRIES = 50
 
-/** Project content blocks (text / image) to a bounded plain-text summary. */
-export function summarizeBlocks(blocks: readonly { type?: unknown; text?: unknown }[], limit: number): string {
-  const joined = blocks
-    .map((b) => (typeof b.text === 'string' ? b.text : ''))
-    .filter((t) => t.length > 0)
-    .join('\n')
-  if (joined.length <= limit) return joined
-  return `${joined.slice(0, limit)}\n…(truncated ${joined.length - limit} chars)`
-}
-
 /**
  * The context ledger. Threaded through the plugin entry; one instance per plugin load.
  * @param summaryLimit — max chars retained per entry's `summaryText` (mirrors the recall cap).
@@ -111,12 +101,16 @@ export class ContextLedger {
     return { hadCompaction: last !== undefined, last }
   }
 
-  /** Best-effort persist the current snapshot. Returns true when a file was written. */
+  /**
+   * Best-effort persist the current snapshot. Returns true when a file was written.
+   * The snapshot holds conversation-derived summary text, so it is created owner-only
+   * (0o600); a pre-existing file keeps its mode.
+   */
   save(stateDir: string | undefined): boolean {
     if (stateDir === undefined) return false
     try {
       mkdirSync(stateDir, { recursive: true })
-      writeFileSync(join(stateDir, 'ctxpress-ledger.json'), JSON.stringify({ entries: this.entries, totalShadowedTokens: this.totalShadowedTokens.value }, null, 2))
+      writeFileSync(join(stateDir, 'ctxpress-ledger.json'), JSON.stringify({ entries: this.entries, totalShadowedTokens: this.totalShadowedTokens.value }, null, 2), { mode: 0o600 })
       return true
     } catch {
       return false

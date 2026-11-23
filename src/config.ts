@@ -10,8 +10,6 @@
 export interface CtxpressConfig {
   /** Whether the gate plugin stands DSH's stock auto-compaction aside (`compaction-basic.auto: false`). */
   readonly autoStandAside: boolean
-  /** LLM failure codes the overlay adds to each provider's `retryPolicy.retryableCodes`. */
-  readonly extraRetryCodes: readonly string[]
   /** Directory the context ledger persists its state JSON into (best-effort). */
   readonly stateDir: string | undefined
   /** Maximum characters `ctxpress:recall` / `/ctx recall` surface for one compacted range. */
@@ -21,15 +19,12 @@ export interface CtxpressConfig {
 /** Raw, partially-specified config: every field is an env/file/default candidate. */
 export interface CtxpressInput {
   readonly autoStandAside?: boolean
-  readonly extraRetryCodes?: readonly string[]
   readonly stateDir?: string
   readonly recallLimit?: number
 }
 
 /** The process env block the resolver reads. Injected for testability. */
 export type CtxpressEnv = Record<string, string | undefined>
-
-const DEFAULT_EXTRA_RETRY_CODES = Object.freeze(['MALFORMED_RESPONSE'])
 
 function envBool(env: CtxpressEnv, key: string): boolean | undefined {
   const raw = env[key]
@@ -59,21 +54,16 @@ export function resolveConfig(
     ?? file.autoStandAside
     ?? true
 
-  const extraRetryCodes =
-    (env.CTXPRESS_RETRY_CODES !== undefined
-      ? env.CTXPRESS_RETRY_CODES.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
-      : undefined)
-    ?? file.extraRetryCodes
-    ?? DEFAULT_EXTRA_RETRY_CODES
-
-  const recallLimit =
+  // The recall cap must stay a positive integer: 0 or negative would truncate the
+  // retained summary from the end (or surface nothing) in `recordSummary`/`recall`.
+  const rawRecallLimit =
     envInt(env, 'CTXPRESS_RECALL_LIMIT')
     ?? file.recallLimit
     ?? 4000
+  const recallLimit = rawRecallLimit > 0 ? rawRecallLimit : 4000
 
   return {
     autoStandAside: autoStandAside === true,
-    extraRetryCodes,
     stateDir: file.stateDir ?? env.CTXPRESS_STATE_DIR,
     recallLimit,
   }

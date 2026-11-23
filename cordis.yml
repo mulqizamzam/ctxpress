@@ -1,8 +1,10 @@
 # Keyless composition for verifying ctxpress against the REAL DSH service packages.
 #
-# The authoritative, DSH-blessed verifier is verify/load-verify.ts (boots a keyless
-# AgentLoop the way DSH's own tests do, then mounts ctxpress). This composition lists the
-# same service set for the standalone loader; run it with:
+# This is the standalone-loader composition: it lists the real service set and ends with
+# the verify DRIVER plugin (verify/driver.ts), which checks registration synchronously,
+# drives one tool through the pipeline, and reports + exits. The authoritative, DSH-blessed
+# verifier is the script verify/load-verify.ts (boots a keyless AgentLoop the way DSH's own
+# tests do, then mounts ctxpress). Run this composition with:
 #   node --import tsx ../../deepseek-harness/vendor/cordis/bin.js   (from ctxpress/)
 #
 # Real services are composed so ctxpress registers into the actual registries; a stub
@@ -14,4 +16,4 @@
 - name: './verify/stubs.ts'
 - name: './src/index.ts'
 - name: './src/gate.ts'
-- name: './verify/load-verify.ts'
+- name: './verify/driver.ts'

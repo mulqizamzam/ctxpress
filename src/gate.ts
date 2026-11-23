@@ -26,9 +26,11 @@ export interface OverlayRow {
  * Build the overlay rows ctxpress needs on DSH 0.2.3:
  *  - `compaction-basic` stood aside (`auto: false`) when the lane is owned, so the model-driven
  *    tools are the sole compaction trigger; otherwise leave it untouched.
- *  - Retry-code additions are per-provider in 0.2.3 (`retryPolicy.retryableCodes`); this returns
- *    them as a *named* list the overlay consumer applies to the active provider row, no-op'ing
- *    with a warning when that row is absent (bili's absent-row rule).
+ *
+ * Retry-code additions are deliberately NOT emitted here: in 0.2.3 the `retryPolicy` lives
+ * under each provider row and the provider row id is build-specific, so the row can only be
+ * documented by hand (`dsh.bundle.patch.yml` carries the note). There is no config knob for
+ * it.
  */
 export function buildOverlayRows(config: CtxpressConfig = resolveConfig()): OverlayRow[] {
   const rows: OverlayRow[] = []
@@ -48,8 +50,10 @@ export function apply(ctx: Context): void {
   const logger = ctx.logger('ctxpress-gate')
   ctx.effect(function* () {
     logger.info?.(`ctxpress lane owned; auto-stand-aside ${config.autoStandAside ? 'on' : 'off'}`)
-    const gate = { owned: true, config }
     // A service the preset gate rows can wait on; present so long as this entry is alive.
+    // Only the lane facts go on the bus — no local paths (stateDir) or other resolved
+    // config that consumers of this service should not see.
+    const gate = { owned: true, autoStandAside: config.autoStandAside }
     yield ctx.provide('ctxpressLaneOwner', gate)
   }, 'ctxpress gate lifecycle')
 }
