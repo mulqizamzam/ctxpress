@@ -9,6 +9,8 @@ export interface FakeCtx {
   readonly registered: CommandDefinition[]
   readonly registeredTools: Array<{ name: string; execute(args: unknown, exec?: unknown): Promise<unknown> | unknown }>
   readonly listeners: Map<string, Array<(...args: never[]) => unknown>>
+  /** Values seeded by tests for the optional-service seam (`ctx.get(name, false)`). */
+  readonly provided: Map<string, unknown>
   commands: { register(def: CommandDefinition): () => void }
   tools: { register(tool: unknown): void; get(name: string, scope?: unknown): unknown }
   systemPrompt: { section(opts: unknown): void }
@@ -16,6 +18,7 @@ export interface FakeCtx {
   effect(fn: () => Generator<unknown, void, unknown>, label?: string): void
   compaction: { compactNow: (agent: unknown, signal: AbortSignal, commandId: unknown) => Promise<unknown> }
   logger(_name: string): { info?: (...a: unknown[]) => void; debug?: (...a: unknown[]) => void; error?: (...a: unknown[]) => void }
+  get(name: string, _strict?: boolean): unknown
 }
 
 export function makeCtx(opts: {
@@ -24,10 +27,12 @@ export function makeCtx(opts: {
   const registered: CommandDefinition[] = []
   const registeredTools: FakeCtx['registeredTools'] = []
   const listeners = new Map<string, Array<(...args: never[]) => unknown>>()
+  const provided = new Map<string, unknown>()
   const ctx: FakeCtx = {
     registered,
     registeredTools,
     listeners,
+    provided,
     commands: {
       register(def) {
         registered.push(def)
@@ -69,6 +74,9 @@ export function makeCtx(opts: {
     },
     logger() {
       return { info() {}, debug() {}, error() {} }
+    },
+    get(name: string) {
+      return provided.get(name)
     },
   }
   return ctx

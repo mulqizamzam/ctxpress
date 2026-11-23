@@ -48,7 +48,7 @@ export interface RecallReceipt {
   readonly mode: 'summary' | 'expanded' | 'unavailable'
   readonly unavailableReason?: 'no-compaction' | 'no-agent' | 'no-session-query' | 'read-failed'
   readonly readErrorCode?: string
-  readonly shadowedSeqs?: readonly number[]
+  readonly shadowedSeqs?: number[]
   readonly shadowedTokens?: number
   readonly compactionId?: string
   readonly summary?: string
@@ -75,7 +75,7 @@ export interface ExpandParams {
 function entryFacts(entry: LedgerEntry): Pick<RecallReceipt, 'hadCompaction' | 'shadowedSeqs' | 'shadowedTokens' | 'compactionId'> {
   return {
     hadCompaction: true,
-    shadowedSeqs: entry.shadowedSeqs,
+    shadowedSeqs: [...entry.shadowedSeqs],
     shadowedTokens: entry.shadowedTokenCount,
     ...entry.compactionId !== undefined ? { compactionId: entry.compactionId } : {},
   }

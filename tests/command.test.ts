@@ -49,6 +49,45 @@ test('/ctx recall [chars] caps the summary', async () => {
   assert.match(r.text ?? '', /XXXX/)
 })
 
+test('/ctx recall expand re-surfaces the shadowed transcript', async () => {
+  const { ctx, def, ledger } = setup()
+  ledger.recordSummary({ shadowedSeqs: [1, 2], shadowedTokenCount: 10, compactionId: 'c1' })
+  ctx.provided.set('sessionQuery', {
+    readSession: async () => ({
+      events: [
+        { seq: 1, time: 0, type: 'user/message', data: { content: [{ type: 'text', text: 'original user' }] } },
+        { seq: 2, time: 0, type: 'assistant/message', data: { message: { content: [{ type: 'text', text: 'original assistant' }] } } },
+      ],
+    }),
+  })
+  const r: { kind: string; text?: string } = await def.handler(inv(' recall expand '))
+  assert.equal(r.kind, 'success')
+  assert.match(r.text ?? '', /expanded recall of 2 shadowed items/)
+  assert.match(r.text ?? '', /original user/)
+})
+
+test('/ctx recall expand <chars> caps the transcript', async () => {
+  const { ctx, def, ledger } = setup()
+  ledger.recordSummary({ shadowedSeqs: [1], shadowedTokenCount: 40, compactionId: 'c1' })
+  ctx.provided.set('sessionQuery', {
+    readSession: async () => ({
+      events: [{ seq: 1, time: 0, type: 'user/message', data: { content: [{ type: 'text', text: 'B'.repeat(40) }] } }],
+    }),
+  })
+  const r: { kind: string; text?: string } = await def.handler(inv(' recall expand 3'))
+  assert.equal(r.kind, 'success')
+  assert.match(r.text ?? '', /expanded recall of 1 shadowed items/)
+  assert.match(r.text ?? '', /\(truncated\)/)
+})
+
+test('/ctx recall expand without sessionQuery → unavailable receipt', async () => {
+  const { def, ledger } = setup()
+  ledger.recordSummary({ shadowedSeqs: [1], shadowedTokenCount: 5, compactionId: 'c1' })
+  const r: { kind: string; text?: string } = await def.handler(inv(' recall expand '))
+  assert.equal(r.kind, 'success')
+  assert.match(r.text ?? '', /unavailable \(no-session-query\)/)
+})
+
 test('unknown subcommand → usage error', async () => {
   const { def } = setup()
   const r: { kind: string; text?: string } = await def.handler(inv('bogus'))

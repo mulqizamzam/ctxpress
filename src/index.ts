@@ -76,6 +76,8 @@ export function apply(ctx: Context): void {
         provider: evt.provider,
         model: evt.model,
         summaryText: textOf(evt.summary),
+        compactionId: evt.compactionId !== undefined ? String(evt.compactionId) : undefined,
+        summarySeq: typeof event.seq === 'number' ? event.seq : undefined,
       })
       logger.debug?.(`compaction/summary observed: ${evt.shadowedSeqs.length} shadowed (~${evt.shadowedTokenCount} tokens)`)
     })

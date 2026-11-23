@@ -12,8 +12,9 @@ import type { CommandId } from '@deepseek-ai/dsh-commands'
 import { ManualCompactionError } from '@deepseek-ai/dsh-compaction'
 import type { CtxpressConfig } from './config.js'
 import type { ContextLedger } from './context-ledger.js'
+import { expandReceipt, type SessionQueryLike } from './recall.js'
 
-const USAGE = 'Usage: /ctx [status|compact|recall [chars]]'
+const USAGE = 'Usage: /ctx [status|compact|recall [chars]|recall expand [chars]]'
 
 function statusText(ctx: Context, ledger: ContextLedger, config: CtxpressConfig): string {
   const s = ledger.status()
@@ -47,6 +48,32 @@ function runRecall(ledger: ContextLedger, config: CtxpressConfig, raw: string): 
 }
 
 /**
+ * The `recall expand [chars]` subcommand: re-surface the ORIGINAL shadowed transcript of
+ * the newest compaction through the optional sessionQuery seam. Always the newest entry —
+ * index selection is tool-only. The first integer token after `expand` is the char cap
+ * (overrides `expandLimit`); extra tokens are ignored.
+ */
+async function runRecallExpand(ctx: Context, invocation: CommandInvocation, ledger: ContextLedger, config: CtxpressConfig, rest: string[]): Promise<CommandResult> {
+  const charsToken = rest.map((t) => t.match(/^(\d+)$/u)?.[1]).find((s) => s !== undefined)
+  const receipt = await expandReceipt({
+    entry: ledger.entry(0),
+    agentId: invocation.agent !== undefined ? String(invocation.agent.id) : undefined,
+    getSessionQuery: () => ctx.get('sessionQuery', false) as SessionQueryLike | undefined,
+    args: charsToken !== undefined ? { limit: Number.parseInt(charsToken, 10) } : {},
+    config,
+    signal: invocation.signal,
+  })
+  if (receipt.mode === 'unavailable') {
+    if (receipt.unavailableReason === 'no-compaction') return { kind: 'success', text: 'Nothing compacted yet to recall.' }
+    return { kind: 'success', text: `ctxpress: recall expand unavailable (${receipt.unavailableReason}${receipt.readErrorCode ? `: ${receipt.readErrorCode}` : ''}).` }
+  }
+  return {
+    kind: 'success',
+    text: `ctxpress: expanded recall of ${receipt.shadowedSeqs?.length ?? 0} shadowed items (~${receipt.shadowedTokens ?? 0} tokens), ${receipt.expandedChars} chars${receipt.truncated ? ' (truncated)' : ''}:\n${receipt.transcript}`,
+  }
+}
+
+/**
  * Register the `/ctx` command with lifecycle-correct teardown.
  * @param ctx - context carrying `commands`, `compaction`, `logger`.
  * @param ledger - the shared context ledger.
@@ -62,7 +89,13 @@ export function registerCtxpressCommand(ctx: Context, ledger: ContextLedger, con
     if (op === 'compact' || op === 'c') {
       operation = runCompact(ctx, invocation)
     } else if (op === 'recall' || op === 'r') {
-      operation = Promise.resolve(runRecall(ledger, config, tokens.slice(1).join(' ')))
+      const rest = tokens.slice(1)
+      const sub = (rest[0] ?? '').toLowerCase()
+      if (sub === 'expand' || sub === 'e') {
+        operation = runRecallExpand(ctx, invocation, ledger, config, rest.slice(1))
+      } else {
+        operation = Promise.resolve(runRecall(ledger, config, rest.join(' ')))
+      }
     } else if (op === 'status' || op === 's' || op === '') {
       operation = Promise.resolve({ kind: 'success' as const, text: statusText(ctx, ledger, config) })
     } else {
@@ -79,8 +112,8 @@ export function registerCtxpressCommand(ctx: Context, ledger: ContextLedger, con
     yield ctx.commands.register({
       definitionId: brandString<CommandDefinitionId>('ctxpress:ctx'),
       name: 'ctx',
-      description: 'Context management: /ctx [status|compact|recall [chars]]',
-      input: { hint: 'status | compact | recall [chars]' },
+      description: 'Context management: /ctx [status|compact|recall [chars]|recall expand [chars]]',
+      input: { hint: 'status | compact | recall [chars] | recall expand [chars]' },
       handler,
     })
   }, 'ctxpress /ctx command lifecycle')

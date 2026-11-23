@@ -65,6 +65,8 @@ test('recall surfaces the summary fed through the session/event listener', async
   ctx.listeners.get('session/event')?.[0]({}, summaryEvent())
   const out: Record<string, unknown> = await tool(ctx.registeredTools, 'ctxpress_recall').execute({}, makeExec() as never)
   assert.equal(out.hadCompaction, true)
+  assert.equal(out.mode, 'summary')
   assert.deepEqual(out.shadowedSeqs, [1, 2, 3])
   assert.equal(out.summary, 'sum')
+  assert.equal(out.compactionId, 'c1')
 })

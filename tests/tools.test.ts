@@ -69,16 +69,59 @@ test('context: reads the ledger and echoes the config flag', async () => {
 
 test('recall: surfaces the most recent summary, capped by the arg', async () => {
   const { defs, ledger } = setup()
-  ledger.recordSummary({ shadowedSeqs: [1, 2], shadowedTokenCount: 10, summaryText: 'A'.repeat(50) })
-  const out: { hadCompaction?: boolean; summary?: string; shadowedTokens?: number } =
+  ledger.recordSummary({ shadowedSeqs: [1, 2], shadowedTokenCount: 10, compactionId: 'c1', summaryText: 'A'.repeat(50) })
+  const out: { hadCompaction?: boolean; mode?: string; summary?: string; shadowedTokens?: number } =
     await defs[2].execute({ limit: 5 }, makeExec() as never)
   assert.equal(out.hadCompaction, true)
+  assert.equal(out.mode, 'summary')
   assert.equal(out.summary, 'AAAAA')
   assert.equal(out.shadowedTokens, 10)
 })
 
-test('recall: nothing compacted yet → hadCompaction false', async () => {
+test('recall: nothing compacted yet → hadCompaction false, no-compaction receipt', async () => {
   const { defs } = setup()
-  const out: { hadCompaction?: boolean } = await defs[2].execute({}, makeExec() as never)
+  const out: { hadCompaction?: boolean; mode?: string; unavailableReason?: string } = await defs[2].execute({}, makeExec() as never)
   assert.equal(out.hadCompaction, false)
+  assert.equal(out.mode, 'unavailable')
+  assert.equal(out.unavailableReason, 'no-compaction')
+})
+
+test('recall expand: sessionQuery absent → no-session-query receipt', async () => {
+  const { defs, ledger } = setup()
+  ledger.recordSummary({ shadowedSeqs: [1, 2], shadowedTokenCount: 10, compactionId: 'c1' })
+  const out: { mode?: string; unavailableReason?: string; shadowedSeqs?: number[] } =
+    await defs[2].execute({ expand: true }, makeExec({ id: 's' }) as never)
+  assert.equal(out.mode, 'unavailable')
+  assert.equal(out.unavailableReason, 'no-session-query')
+  assert.deepEqual(out.shadowedSeqs, [1, 2])
+})
+
+test('recall expand: with stub sessionQuery → expanded receipt', async () => {
+  const { defs, ledger, ctx } = setup()
+  ledger.recordSummary({ shadowedSeqs: [1, 2], shadowedTokenCount: 10, compactionId: 'c1' })
+  ctx.provided.set('sessionQuery', {
+    readSession: async () => ({
+      events: [
+        { seq: 1, time: 0, type: 'user/message', data: { content: [{ type: 'text', text: 'original user' }] } },
+        { seq: 2, time: 0, type: 'assistant/message', data: { message: { content: [{ type: 'text', text: 'original assistant' }] } } },
+      ],
+    }),
+  })
+  const out: { mode?: string; transcript?: string; expandedChars?: number; truncated?: boolean; compactionId?: string } =
+    await defs[2].execute({ expand: true }, makeExec({ id: 's' }) as never)
+  assert.equal(out.mode, 'expanded')
+  assert.equal(out.transcript, 'User: original user\nAssistant: original assistant')
+  assert.equal(out.expandedChars, (out.transcript ?? '').length)
+  assert.equal(out.truncated, false)
+  assert.equal(out.compactionId, 'c1')
+})
+
+test('recall expand: index out of range → no-compaction', async () => {
+  const { defs, ledger } = setup()
+  ledger.recordSummary({ shadowedSeqs: [1], shadowedTokenCount: 5 })
+  const out: { hadCompaction?: boolean; mode?: string; unavailableReason?: string } =
+    await defs[2].execute({ expand: true, index: 5 }, makeExec({ id: 's' }) as never)
+  assert.equal(out.hadCompaction, false)
+  assert.equal(out.mode, 'unavailable')
+  assert.equal(out.unavailableReason, 'no-compaction')
 })

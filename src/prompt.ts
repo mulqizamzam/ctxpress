@@ -24,7 +24,7 @@ export function compressionPhilosophy(available: boolean): string {
     '',
     '- ctxpress:context — read current context pressure: how much history has been compacted and the last compaction facts. Cheap and read-only.',
     '- ctxpress:compact — ask the harness to compact older conversation history into a summary. Prefer this over manually rewriting or dropping earlier context. The result reports how many history items and roughly how many tokens were saved.',
-    '- ctxpress:recall — re-surface the most recently compacted range (the shadowed history items and the summary the harness wrote) when you need detail that was compressed away.',
+    '- ctxpress:recall — re-surface a compacted range: the harness summary by default, or the original shadowed transcript with expand=true. Use expand when you need the actual detail that was compressed away.',
     '',
     'A healthy session keeps most of its context; compact at pressure, and rely on recall when a compacted detail is needed again. Do not compact in a loop.',
   ].join('\n')
