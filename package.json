@@ -1,0 +1,51 @@
+{
+  "name": "ctxpress",
+  "version": "0.0.0-dsh0.2.3",
+  "description": "ContextPress — context-management plugin for DeepSeek Harness (DSH). Imitates ranxianglei/billion-context's dsh lane in DSH-native form: model-callable compact/context/recall tools, a /ctx command, system-prompt compression guidance, a compaction stand-aside gate, and an optional retry-code overlay.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./gate": "./dist/gate.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "dsh.bundle.patch.yml",
+    "README.md",
+    "DESIGN.md"
+  ],
+  "scripts": {
+    "build": "esbuild src/index.ts src/gate.ts --format=esm --target=es2022 --platform=node --outdir=dist --bundle --external:@deepseek-ai/* --external:fs --external:path --external:os --sourcemap",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "verify": "node --import tsx verify/load-verify.ts",
+    "verify:dist": "node --import tsx verify/load-verify-dist.ts"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "context",
+    "compaction",
+    "compression",
+    "billion-context"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/cordis": "*",
+    "@deepseek-ai/dsh-brand": "*",
+    "@deepseek-ai/dsh-tools": "*",
+    "@deepseek-ai/dsh-commands": "*",
+    "@deepseek-ai/dsh-compaction": "*",
+    "@deepseek-ai/dsh-system-prompt": "*"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-session": "*",
+    "@deepseek-ai/dsh-llm": "*",
+    "@deepseek-ai/dsh-agent": "*",
+    "tsx": "*",
+    "typescript": "*"
+  }
+}

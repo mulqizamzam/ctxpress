@@ -1,0 +1,32 @@
+# ctxpress — DSH 0.2.3-alpha.2 bundle-patch overlay.
+#
+# Mounts ctxpress the way billion-context mounts its dsh lane: the profile's
+# package.json lists ctxpress in `dsh.profile.bundles`, and the loader resolves
+# `name` from the profile's node_modules (a `ctxpress/gate` subpath resolves to
+# the package's `./gate` export).
+#
+# # single source of truth for the row set is `src/gate.ts#buildOverlayRows`; this
+# file is the hand-shipped form of the same rows. Keep them in sync (a test asserts it).
+- insert:
+    - id: ctxpress
+      name: ctxpress
+    - id: ctxpress-gate
+      name: ctxpress/gate
+# Stand DSH's stock auto-compaction aside so the model-driven ctxpress tools are the sole
+# compaction trigger. Verified row id + config key for 0.2.3-alpha.2 (compaction-basic,
+# `config.auto` boolean). The manual `compactNow` seam stays live — only the automatic
+# trigger is off.
+- id: compaction-basic
+  config:
+    auto: false
+# Retry-code addition. DSH 0.2.3 keeps `retryPolicy` UNDER EACH PROVIDER config (the
+# `@deepseek-ai/dsh-llm-retry` executor carries no top-level retryableCodes list).
+# `MALFORMED_RESPONSE` is a valid `retryChoice` here (packages/llm/llm/src/error.ts).
+# Apply to your active provider row, e.g.:
+#   - id: <your-provider-row>
+#     config:
+#       retryPolicy:
+#         mode: normal
+#         retryableCodes: [EMPTY_RESPONSE, RATE_LIMIT, SERVER, TIMEOUT, TRANSPORT, MALFORMED_RESPONSE]
+# Ship it against the row that is actually present on your DSH build; an absent row is a
+# no-op with a warning, never a boot failure.
