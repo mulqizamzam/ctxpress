@@ -9,8 +9,10 @@
 import { Context } from '@deepseek-ai/cordis'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
+import { Session } from '@deepseek-ai/dsh-session'
 import commandsService from '@deepseek-ai/dsh-commands'
 import * as compactionStub from './stubs.ts'
+import * as squStub from './stubs-session-query.ts'
 import * as ctxpress from '../dist/index.js'
 import * as ctxpressGate from '../dist/gate.js'
 
@@ -65,7 +67,68 @@ async function main(): Promise<void> {
   const block = res.results?.[0]?.result?.content?.[0]
   console.log(`[load] ctxpress_context execute → ${block?.text ?? JSON.stringify(res.results?.[0] ?? res)}`)
 
-  const ok = present.length === 3 && command !== undefined
+  // — Recall expand path over the real pipeline (against the built dist artifact) —
+
+  const recallText = async (argsJson: string, agent?: unknown): Promise<string | undefined> => {
+    const r = await tools.execute({
+      calls: [{ type: 'tool-call', id: 'ctxpress-verify-recall', name: 'ctxpress_recall', arguments: argsJson }],
+      signal: new AbortController().signal,
+      ...(agent !== undefined ? { agent } : {}),
+    })
+    return r.results?.[0]?.result?.content?.[0]?.text
+  }
+
+  // 1. Seed the ledger through the real session/event feed (the plugin's own listener).
+  //    A real (empty) Session instance is passed as the first arg: every other root-level
+  //    `session/event` listener (the session-projection drive, persistence, telemetry) reads
+  //    `session.header` / `session.snapshotEvents(...)`, so a bare `undefined` would crash
+  //    them. An empty real session satisfies all of them; the plugin's ledger listener only
+  //    reads the event payload + seq.
+  const verifySession = Session.create('ctxpress-verify' as never)
+  ctx.emit('session/event', verifySession, {
+    seq: 42,
+    time: 0,
+    type: 'compaction/summary',
+    data: {
+      compactionId: 'c-verify',
+      summary: [{ type: 'text', text: 'sum' }],
+      shadowedRange: { start: 10, end: 11 },
+      shadowedSeqs: [10, 11],
+      shadowedTokenCount: 99,
+      provider: 'p',
+      model: 'm',
+    },
+  })
+  await settle(40)
+
+  // 2. Summary path: the seeded entry → 'recalled 2 shadowed items'.
+  const summaryText = await recallText('{}')
+  const summaryOk = summaryText !== undefined && summaryText.includes('recalled 2 shadowed items')
+  console.log(`[load] ctxpress_recall {} → ${summaryText ?? '(no text)'}  ${summaryOk ? 'OK' : 'MISSING'}`)
+
+  // 3. Negative expand: no sessionQuery service yet → no-session-query receipt. When a real
+  //    sessionQuery happens to be mounted in this harness, skip the assert rather than flake.
+  let expandNegativeOk = true
+  if (ctx.get('sessionQuery', false) === undefined) {
+    const negText = await recallText('{"expand":true}', { id: 'sess-verify' })
+    expandNegativeOk = negText !== undefined && /unavailable \(no-session-query\)/.test(negText)
+    console.log(`[load] ctxpress_recall {expand} (no sessionQuery) → ${negText ?? '(no text)'}  ${expandNegativeOk ? 'OK' : 'MISSING'}`)
+  } else {
+    console.log('[load] ctxpress_recall {expand} negative skipped: a real sessionQuery service is mounted in this harness')
+  }
+
+  // 4. Positive expand: mount the sessionQuery stub → expanded receipt with the seeded transcript.
+  await ctx.plugin(squStub as never)
+  await settle(40)
+  const expandText = await recallText('{"expand":true}', { id: 'sess-verify' })
+  const expandOk =
+    expandText !== undefined &&
+    expandText.includes('expanded 2 shadowed items') &&
+    expandText.includes('original user text') &&
+    expandText.includes('original assistant text')
+  console.log(`[load] ctxpress_recall {expand} (stub sessionQuery) → ${expandText ?? '(no text)'}  ${expandOk ? 'OK' : 'MISSING'}`)
+
+  const ok = present.length === 3 && command !== undefined && summaryOk && expandNegativeOk && expandOk
   console.log(`[load] ${ok ? 'PASS' : 'FAIL'}`)
   process.exit(ok ? 0 : 1)
 }
