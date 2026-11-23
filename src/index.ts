@@ -25,12 +25,12 @@ import type {} from '@deepseek-ai/dsh-system-prompt'
 // the compaction package's type augmentation. Both are type-only, erased at build.
 import type {} from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-compaction'
-import { resolveConfig } from './config'
-import { ContextLedger } from './context-ledger'
-import { defineCtxpressTools } from './tools'
-import { registerCtxpressCommand } from './command'
-import { SECTION_NAME, SECTION_ORDER, compressionPhilosophy } from './prompt'
-import { textOf } from './tools-text'
+import { resolveConfig } from './config.js'
+import { ContextLedger } from './context-ledger.js'
+import { defineCtxpressTools } from './tools.js'
+import { registerCtxpressCommand } from './command.js'
+import { SECTION_NAME, SECTION_ORDER, compressionPhilosophy } from './prompt.js'
+import { textOf } from './tools-text.js'
 
 export const name = 'ctxpress'
 export const inject = ['tools', 'commands', 'compaction', 'systemPrompt']

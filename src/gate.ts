@@ -11,7 +11,7 @@
  * @module ctxpress/gate
  */
 import type { Context } from '@deepseek-ai/cordis'
-import { resolveConfig, type CtxpressConfig } from './config'
+import { resolveConfig, type CtxpressConfig } from './config.js'
 
 export const name = 'ctxpress-gate'
 export const inject: string[] = []

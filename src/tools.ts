@@ -13,8 +13,8 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { CommandId } from '@deepseek-ai/dsh-commands'
 import { ManualCompactionError } from '@deepseek-ai/dsh-compaction'
-import type { CtxpressConfig } from './config'
-import type { ContextLedger } from './context-ledger'
+import type { CtxpressConfig } from './config.js'
+import type { ContextLedger } from './context-ledger.js'
 
 /** Map a manual-compaction failure code to a short model-facing receipt. */
 function compactErrorReceipt(e: ManualCompactionError): string {

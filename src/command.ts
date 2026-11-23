@@ -10,8 +10,8 @@ import type { CommandDefinitionId } from '@deepseek-ai/dsh-commands/types'
 import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands'
 import type { CommandId } from '@deepseek-ai/dsh-commands'
 import { ManualCompactionError } from '@deepseek-ai/dsh-compaction'
-import type { CtxpressConfig } from './config'
-import type { ContextLedger } from './context-ledger'
+import type { CtxpressConfig } from './config.js'
+import type { ContextLedger } from './context-ledger.js'
 
 const USAGE = 'Usage: /ctx [status|compact|recall [chars]]'
 

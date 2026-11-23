@@ -6,8 +6,14 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./gate": "./dist/gate.js",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./gate": {
+      "types": "./dist/gate.d.ts",
+      "default": "./dist/gate.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -18,6 +24,8 @@
   ],
   "scripts": {
     "build": "esbuild src/index.ts src/gate.ts --format=esm --target=es2022 --platform=node --outdir=dist --bundle --external:@deepseek-ai/* --external:fs --external:path --external:os --sourcemap",
+    "build:types": "tsc -p tsconfig.json --emitDeclarationOnly",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
     "verify": "node --import tsx verify/load-verify.ts",
     "verify:dist": "node --import tsx verify/load-verify-dist.ts"
@@ -34,18 +42,22 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@deepseek-ai/cordis": "*",
-    "@deepseek-ai/dsh-brand": "*",
-    "@deepseek-ai/dsh-tools": "*",
-    "@deepseek-ai/dsh-commands": "*",
-    "@deepseek-ai/dsh-compaction": "*",
-    "@deepseek-ai/dsh-system-prompt": "*"
+    "@deepseek-ai/cordis": "4.2.0-alpha.1",
+    "@deepseek-ai/dsh-brand": "0.2.3-alpha.2",
+    "@deepseek-ai/dsh-tools": "0.2.3-alpha.2",
+    "@deepseek-ai/dsh-commands": "0.2.3-alpha.2",
+    "@deepseek-ai/dsh-compaction": "0.2.3-alpha.2",
+    "@deepseek-ai/dsh-system-prompt": "0.2.3-alpha.2"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-session": "*",
-    "@deepseek-ai/dsh-llm": "*",
-    "@deepseek-ai/dsh-agent": "*",
-    "tsx": "*",
-    "typescript": "*"
+    "@deepseek-ai/dsh-session": "0.2.3-alpha.2",
+    "@deepseek-ai/dsh-llm": "0.2.3-alpha.2",
+    "@deepseek-ai/dsh-agent": "0.2.3-alpha.2",
+    "@deepseek-ai/dsh-agent-loop": "0.2.3-alpha.2",
+    "@deepseek-ai/dsh-agent-loop-testkit": "0.2.3-alpha.2",
+    "@types/node": "22.20.1",
+    "esbuild": "0.21.5",
+    "tsx": "4.23.13",
+    "typescript": "6.0.3"
   }
 }
