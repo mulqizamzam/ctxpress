@@ -8,7 +8,8 @@
  *     so an agent turn can self-direct compaction, as bili's `compress` tool does on the wire;
  *   - registers a human `/ctx` command (status | compact | recall), the analogue of bili's `/acp`;
  *   - contributes a system-prompt "compression philosophy" section so the model knows when to use them;
- *   - owns a context ledger fed by the single `compaction/summary` event (single source of truth).
+ *   - owns a context ledger fed by the `compaction/summary` session event, observed on the
+ *     `session/event` feed (single source of truth).
  *
  * Compose it in a `cordis.yml` / bundle-patch overlay alongside the DSH service packages
  * (`@deepseek-ai/dsh-tools`, `-commands`, `-compaction`, `-system-prompt`); see `dsh.bundle.patch.yml`.
@@ -19,7 +20,11 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-commands'
 import type {} from '@deepseek-ai/dsh-system-prompt'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm'
+// The `session/*` context events (the session feed the ledger listens on) come from the
+// session service; the `compaction/summary` event type merges into the session event map via
+// the compaction package's type augmentation. Both are type-only, erased at build.
+import type {} from '@deepseek-ai/dsh-session'
+import type {} from '@deepseek-ai/dsh-compaction'
 import { resolveConfig } from './config'
 import { ContextLedger } from './context-ledger'
 import { defineCtxpressTools } from './tools'
@@ -29,15 +34,6 @@ import { textOf } from './tools-text'
 
 export const name = 'ctxpress'
 export const inject = ['tools', 'commands', 'compaction', 'systemPrompt']
-
-/** The projected `compaction/summary` event payload (structural; the package owns the full type). */
-interface CompactionSummaryPayload {
-  readonly shadowedSeqs: readonly number[]
-  readonly shadowedTokenCount: number
-  readonly provider?: string
-  readonly model?: string
-  readonly summary: readonly ContentBlock[]
-}
 
 /**
  * Apply ctxpress.
@@ -64,11 +60,16 @@ export function apply(ctx: Context): void {
     retirement: 'ctxpress is no longer installed; its context-management tools are unavailable.',
   })
 
-  // The summary event is the single source of truth for the ledger. Guarded: on a composition
-  // that has not declared `compaction/summary` (e.g. a keyless verify harness), registering it
-  // is a no-op rather than a crash — the tools and command still work; only the live feed is off.
+  // The `compaction/summary` SESSION event is the single source of truth for the ledger.
+  // Session events never fire on the context bus by type name — they ride the single
+  // `session/event` feed with the payload under `event.data`, so the listener filters on
+  // `event.type`. Guarded: on a composition without the session service (e.g. a keyless
+  // verify harness) the registration is a no-op rather than a crash — the tools and command
+  // still work; only the live feed is off.
   try {
-    ctx.on('compaction/summary', (evt: CompactionSummaryPayload) => {
+    ctx.on('session/event', (_session, event) => {
+      if (event.type !== 'compaction/summary') return
+      const evt = event.data
       ledger.recordSummary({
         shadowedSeqs: evt.shadowedSeqs,
         shadowedTokenCount: evt.shadowedTokenCount,
@@ -79,7 +80,7 @@ export function apply(ctx: Context): void {
       logger.debug?.(`compaction/summary observed: ${evt.shadowedSeqs.length} shadowed (~${evt.shadowedTokenCount} tokens)`)
     })
   } catch (error: unknown) {
-    logger.debug?.(`compaction/summary event not registered: ${String((error as Error)?.message ?? error)}`)
+    logger.debug?.(`session/event listener not registered: ${String((error as Error)?.message ?? error)}`)
   }
 
   // Persist the ledger snapshot on unload (best-effort; a snapshot, not a cross-copy source of truth).

@@ -108,7 +108,7 @@ export function defineCtxpressTools(ctx: Context, ledger: ContextLedger, config:
         return [{ type: 'text', text: `[ctxpress] context: auto-stand-aside ${v.autoStandAside ? 'ON' : 'OFF'}; ${body}` }]
       },
     },
-    execute() {
+    async execute() {
       const s = ledger.status()
       return {
         hasCompactions: s.hasCompactions,
@@ -143,7 +143,7 @@ export function defineCtxpressTools(ctx: Context, ledger: ContextLedger, config:
         return [{ type: 'text', text: `[ctxpress] recalled ${v.shadowedSeqs?.length ?? 0} shadowed items (~${v.shadowedTokens ?? 0} tokens):\n${v.summary}` }]
       },
     },
-    execute(args) {
+    async execute(args) {
       const r = ledger.recall()
       if (!r.hadCompaction || r.last === undefined) return { hadCompaction: false }
       const cap = typeof args.limit === 'number' && Number.isFinite(args.limit) && args.limit > 0 ? Math.floor(args.limit) : config.recallLimit
