@@ -37,3 +37,17 @@ test('env stateDir passes through', () => {
   const c = resolveConfig({}, envOf({ CTXPRESS_STATE_DIR: '/tmp/ctx' }))
   assert.equal(c.stateDir, '/tmp/ctx')
 })
+
+test('expandLimit defaults to 8000', () => {
+  assert.equal(resolveConfig({}, {}).expandLimit, 8000)
+})
+
+test('expandLimit: env beats file beats default', () => {
+  assert.equal(resolveConfig({ expandLimit: 5000 }, envOf({ CTXPRESS_EXPAND_LIMIT: '123' })).expandLimit, 123)
+  assert.equal(resolveConfig({ expandLimit: 5000 }, {}).expandLimit, 5000)
+})
+
+test('expandLimit: non-positive env falls back to default', () => {
+  assert.equal(resolveConfig({}, envOf({ CTXPRESS_EXPAND_LIMIT: '0' })).expandLimit, 8000)
+  assert.equal(resolveConfig({}, envOf({ CTXPRESS_EXPAND_LIMIT: 'abc' })).expandLimit, 8000)
+})
